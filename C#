@@ -1,1 +1,103 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace InventorySystem
+{
+    public interface IEntity
+    {
+        int Id { get; set; }
+    }
+
+    public class Product : IEntity
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public decimal Price { get; set; }
+        public int StockQuantity { get; set; }
+        public string Category { get; set; }
+
+        public override string ToString() => $"{Id}: {Name} ({Category}) - ${Price} [Stock: {StockQuantity}]";
+    }
+
+    public class Repository<T> where T : class, IEntity
+    {
+        private readonly List<T> _items = new List<T>();
+
+        public async Task AddAsync(T item)
+        {
+            await Task.Delay(10);
+            _items.Add(item);
+        }
+
+        public async Task<T> GetByIdAsync(int id)
+        {
+            await Task.Delay(10);
+            return _items.FirstOrDefault(i => i.Id == id);
+        }
+
+        public async Task<IEnumerable<T>> GetAllAsync()
+        {
+            await Task.Delay(10);
+            return _items.AsEnumerable();
+        }
+
+        public async Task<bool> DeleteAsync(int id)
+        {
+            await Task.Delay(10);
+            var item = await GetByIdAsync(id);
+            if (item == null) return false;
+            return _items.Remove(item);
+        }
+    }
+
+    public class InventoryManager
+    {
+        private readonly Repository<Product> _repository;
+
+        public InventoryManager(Repository<Product> repository)
+        {
+            _repository = repository;
+        }
+
+        public async Task ProcessInventoryAnalysis()
+        {
+            var products = await _repository.GetAllAsync();
+
+            var expensiveProducts = products
+                .Where(p => p.Price > 500)
+                .OrderByDescending(p => p.Price);
+
+            var categoryGroups = products
+                .GroupBy(p => p.Category)
+                .Select(g => new { Category = g.Key, Count = g.Count(), AveragePrice = g.Average(p => p.Price) });
+
+            Console.WriteLine("Analysis Report:");
+            foreach (var group in categoryGroups)
+            {
+                Console.WriteLine($"Category: {group.Category}, Items: {group.Count}, Avg Price: {group.AveragePrice:C}");
+            }
+        }
+    }
+
+    class Program
+    {
+        static async Task Main(string[] args)
+        {
+            var repo = new Repository<Product>();
+            var manager = new InventoryManager(repo);
+
+            await repo.AddAsync(new Product { Id = 1, Name = "Laptop", Price = 1200.50m, StockQuantity = 10, Category = "Electronics" });
+            await repo.AddAsync(new Product { Id = 2, Name = "Phone", Price = 800.00m, StockQuantity = 25, Category = "Electronics" });
+            await repo.AddAsync(new Product { Id = 3, Name = "Desk Chair", Price = 150.00m, StockQuantity = 15, Category = "Furniture" });
+            await repo.AddAsync(new Product { Id = 4, Name = "Monitor", Price = 300.00m, StockQuantity = 8, Category = "Electronics" });
+
+            var all = await repo.GetAllAsync();
+            foreach (var p in all) Console.WriteLine(p);
+
+            await manager.ProcessInventoryAnalysis();
+        }
+    }
+}
 
