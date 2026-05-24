@@ -1,0 +1,323 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+
+namespace GameEngine
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            GameManager game = new GameManager();
+            game.Start();
+        }
+    }
+
+    public class GameManager
+    {
+        private Player player;
+        private Dungeon dungeon;
+        private bool isRunning;
+
+        public void Start()
+        {
+            Console.Clear();
+            Console.Title = "Shadow Dungeon RPG";
+            Console.WriteLine("=== WELCOME TO THE SHADOW DUNGEON ===");
+            Console.Write("Enter your character's name: ");
+            string name = Console.ReadLine();
+            
+            player = new Player(string.IsNullOrWhiteSpace(name) ? "Hero" : name);
+            dungeon = new Dungeon();
+            isRunning = true;
+
+            RunGameLoop();
+        }
+
+        private void RunGameLoop()
+        {
+            while (isRunning && player.IsAlive)
+            {
+                Console.Clear();
+                DisplayHUD();
+                dungeon.DisplayCurrentRoom();
+                ProcessInput();
+            }
+
+            Console.Clear();
+            if (!player.IsAlive)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("GAME OVER. You perished in the depths.");
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("CONGRATULATIONS! You escaped the dungeon victorious!");
+            }
+            Console.ResetColor();
+        }
+
+        private void DisplayHUD()
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"[ Player: {player.Name} | HP: {player.Health}/{player.MaxHealth} | Gold: {player.Gold} | Level: {player.Level} ]");
+            Console.ResetColor();
+            Console.WriteLine(new string('-', 50));
+        }
+
+        private void ProcessInput()
+        {
+            Console.WriteLine("\nWhat would you like to do?");
+            Console.WriteLine("1. Move forward to the next room");
+            Console.WriteLine("2. Drink a health potion");
+            Console.WriteLine("3. Check inventory");
+            Console.WriteLine("4. Quit game");
+            Console.Write("> ");
+
+            string choice = Console.ReadLine();
+            switch (choice)
+            {
+                case "1":
+                    AdvanceDungeon();
+                    break;
+                case "2":
+                    player.UsePotion();
+                    break;
+                case "3":
+                    player.ShowInventory();
+                    break;
+                case "4":
+                    isRunning = false;
+                    break;
+                default:
+                    Console.WriteLine("Invalid command!");
+                    Thread.Sleep(1000);
+                    break;
+            }
+        }
+
+        private void AdvanceDungeon()
+        {
+            dungeon.NextRoom();
+            if (dungeon.HasClearedDungeon)
+            {
+                isRunning = false;
+                return;
+            }
+
+            Enemy enemy = dungeon.GetCurrentEnemy();
+            if (enemy != null)
+            {
+                CombatManager combat = new CombatManager(player, enemy);
+                combat.StartBattle();
+            }
+            else
+            {
+                player.FindLoot();
+            }
+        }
+    }
+
+    public class Player
+    {
+        public string Name { get; private set; }
+        public int Health { get; private set; }
+        public int MaxHealth { get; private set; }
+        public int BaseDamage { get; private set; }
+        public int Gold { get; private set; }
+        public int Level { get; private set; }
+        public int Potions { get; private set; }
+        public List<string> Inventory { get; private set; }
+        public bool IsAlive => Health > 0;
+
+        private Random rand = new Random();
+
+        public Player(string name)
+        {
+            Name = name;
+            MaxHealth = 100;
+            Health = MaxHealth;
+            BaseDamage = 15;
+            Gold = 0;
+            Level = 1;
+            Potions = 3;
+            Inventory = new List<string> { "Rusty Sword", "Cloth Armor" };
+        }
+
+        public int Attack()
+        {
+            return BaseDamage + rand.Next(1, 6);
+        }
+
+        public void TakeDamage(int damage)
+        {
+            Health -= damage;
+            if (Health < 0) Health = 0;
+        }
+
+        public void UsePotion()
+        {
+            if (Potions > 0)
+            {
+                if (Health == MaxHealth)
+                {
+                    Console.WriteLine("You are already at full health!");
+                    Thread.Sleep(1000);
+                    return;
+                }
+                Health += 35;
+                if (Health > MaxHealth) Health = MaxHealth;
+                Potions--;
+                Console.WriteLine($"You drank a potion and restored 35 HP. Remaining potions: {Potions}");
+            }
+            else
+            {
+                Console.WriteLine("You do not have any potions left!");
+            }
+            Thread.Sleep(1500);
+        }
+
+        public void ShowInventory()
+        {
+            Console.Clear();
+            Console.WriteLine("=== INVENTORY ===");
+            foreach (var item in Inventory)
+            {
+                Console.WriteLine($"- {item}");
+            }
+            Console.WriteLine($"- Health Potions: {Potions}");
+            Console.WriteLine("\nPress Enter to return...");
+            Console.ReadLine();
+        }
+
+        public void AddGold(int amount)
+        {
+            Gold += amount;
+            Console.WriteLine($"Collected {amount} gold pieces!");
+        }
+
+        public void FindLoot()
+        {
+            int roll = rand.Next(0, 3);
+            if (roll == 0)
+            {
+                Potions++;
+                Console.WriteLine("You searched the corners and found a Health Potion!");
+            }
+            else if (roll == 1)
+            {
+                string[] weapons = { "Steel Dagger", "Longsword", "Battleaxe" };
+                string newWeapon = weapons[rand.Next(weapons.Length)];
+                if (!Inventory.Contains(newWeapon))
+                {
+                    Inventory.Add(newWeapon);
+                    BaseDamage += 5;
+                    Console.WriteLine($"You found a {newWeapon}! Your attack damage increased.");
+                }
+            }
+            else
+            {
+                Console.WriteLine("The room is empty, but safe to rest.");
+            }
+            Thread.Sleep(2000);
+        }
+
+        public void LevelUp()
+        {
+            Level++;
+            MaxHealth += 15;
+            Health = MaxHealth;
+            BaseDamage += 4;
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"LEVEL UP! You are now Level {Level}. Max HP and damage increased!");
+            Console.ResetColor();
+            Thread.Sleep(2000);
+        }
+    }
+
+    public class Enemy
+    {
+        public string Name { get; private set; }
+        public int Health { get; private set; }
+        public int MaxHealth { get; private set; }
+        public int Damage { get; private set; }
+        public int GoldReward { get; private set; }
+        public bool IsAlive => Health > 0;
+
+        public Enemy(string name, int health, int damage, int goldReward)
+        {
+            Name = name;
+            MaxHealth = health;
+            Health = health;
+            Damage = damage;
+            GoldReward = goldReward;
+        }
+
+        public void TakeDamage(int damage)
+        {
+            Health -= damage;
+            if (Health < 0) Health = 0;
+        }
+    }
+
+    public class Dungeon
+    {
+        private int currentRoomIndex = 0;
+        private const int TotalRooms = 6;
+        private string[] roomDescriptions = new string[]
+        {
+            "A damp, dark entryway smelling of moss and decay.",
+            "An abandoned guardroom with broken stone tables.",
+            "A narrow winding corridor where the walls feel uncomfortably close.",
+            "A vast, underground library filled with rotting manuscripts.",
+            "The torture chambers. Skeletons hang loosely from iron shackles.",
+            "The central sanctum. A massive, gold-embossed throne sits in the darkness."
+        };
+
+        public bool HasClearedDungeon => currentRoomIndex > TotalRooms;
+
+        public void NextRoom()
+        {
+            currentRoomIndex++;
+        }
+
+        public void DisplayCurrentRoom()
+        {
+            if (currentRoomIndex == 0)
+            {
+                Console.WriteLine("You stand before the grand doors of the dungeon. Step forward to begin.");
+                return;
+            }
+
+            if (currentRoomIndex <= TotalRooms)
+            {
+                Console.ForegroundColor = ConsoleColor.Magenta;
+                Console.WriteLine($"[ ROOM {currentRoomIndex} / {TotalRooms} ]");
+                Console.ResetColor();
+                Console.WriteLine(roomDescriptions[currentRoomIndex - 1]);
+            }
+        }
+
+        public Enemy GetCurrentEnemy()
+        {
+            switch (currentRoomIndex)
+            {
+                case 1: return new Enemy("Feral Goblin", 30, 8, 15);
+                case 2: return new Enemy("Skeletal Guard", 45, 12, 25);
+                case 4: return new Enemy("Cursed Shadow", 60, 15, 40);
+                case 6: return new Enemy("Demon Lord Malakor", 120, 22, 100);
+                default: return null;
+            }
+        }
+    }
+
+    public class CombatManager
+    {
+        private Player player;
+        private Enemy enemy;
+        private Random rand = new Random();
+
+        public CombatManager(Player player, Enemy enemy)
+        {
+            this.player = player;
