@@ -94,6 +94,8 @@ namespace InventorySystem
             await repo.AddAsync(new Product { Id = 4, Name = "Monitor", Price = 300.00m, StockQuantity = 8, Category = "Electronics" });
             await repo.AddAsync(new Product { Id = 5, Name = "Monitor", Price = 300.00m, StockQuantity = 3, Category = "Electronics" });
             await repo.AddAsync(new Product { Id = 6, Name = "Monitor", Price = 300.00m, StockQuantity = 1, Category = "Electronics" });
+            await repo.AddAsync(new Product { Id = 7, Name = "Monitor", Price = 300.00m, StockQuantity = 2, Category = "Electronics" });
+
 
             var all = await repo.GetAllAsync();
             foreach (var p in all) Console.WriteLine(p);
