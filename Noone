@@ -307,6 +307,8 @@ namespace GameEngine
                 case 2: return new Enemy("Skeletal Guard", 45, 12, 25);
                 case 4: return new Enemy("Cursed Shadow", 60, 15, 40);
                 case 6: return new Enemy("Demon Lord Malakor", 120, 22, 100);
+                case 8: return new Enemy("Demon Lord Malakor", 120, 22, 200);
+
                 default: return null;
             }
         }
